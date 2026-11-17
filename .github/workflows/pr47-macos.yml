@@ -1,0 +1,22 @@
+name: PR 47 macOS validation
+on:
+  push:
+    branches: [test/pr47-macos]
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build exact PR head
+    runs-on: macos-26
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0c46d819affb5515b104db63148bcbc9077793d1
+          persist-credentials: false
+      - name: Compile app and bundled targets
+        run: |
+          set -o pipefail
+          sw_vers
+          xcodebuild -version
+          xcodebuild -project MaCursor.xcodeproj -scheme MaCursor -configuration Release -arch arm64 -derivedDataPath "$RUNNER_TEMP/maccursor-build" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$RUNNER_TEMP/maccursor-build.log" | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
