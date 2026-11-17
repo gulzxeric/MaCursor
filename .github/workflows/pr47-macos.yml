@@ -20,3 +20,21 @@ jobs:
           sw_vers
           xcodebuild -version
           xcodebuild -project MaCursor.xcodeproj -scheme MaCursor -configuration Release -arch arm64 -derivedDataPath "$RUNNER_TEMP/maccursor-build" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$RUNNER_TEMP/maccursor-build.log" | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
+  behavior:
+    name: Exercise cursor padding on macOS
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and run AppKit regression harness
+        run: |
+          set -euo pipefail
+          sw_vers
+          printf '%s\n' '#include "CGSPrivateCursor.h"' '#include "CGSPrivateAccessibility.h"' > "$RUNNER_TEMP/CursorBridge.h"
+          git diff --exit-code 0c46d819affb5515b104db63148bcbc9077793d1 -- CursorEngine
+          swiftc -swift-version 6 -O -import-objc-header "$RUNNER_TEMP/CursorBridge.h" -Xcc -I -Xcc "$PWD/CursorEngine/CGSPrivateAPI" -framework ApplicationServices \
+            CursorEngine/MACCursorActions.swift CursorEngine/MACCursorDefinitions.swift CursorEngine/MACCursorShadow.swift \
+            .github/pr47-check/Support.swift .github/pr47-check/CursorPaddingCheck.swift -o "$RUNNER_TEMP/cursor-check"
+          "$RUNNER_TEMP/cursor-check"
